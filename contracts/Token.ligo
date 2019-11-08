@@ -52,16 +52,6 @@ function transfer (const accountFrom : address ; const destination : address ; c
     // Fetch src account
     const src: account = get_force(accountFrom, s.accounts);
 
-    // Fetch dst account or add empty dst account to ledger
-    var dst: account := record 
-        balance = 0n;
-        allowances = (map end : map(address, amount));
-    end;
-    case s.accounts[destination] of
-    | None -> skip
-    | Some(n) -> dst := n
-    end;
-
     // Check that the source can spend that much
     if value > src.balance 
     then failwith ("Source balance is too low");
@@ -71,6 +61,18 @@ function transfer (const accountFrom : address ; const destination : address ; c
     const srcBalance: int = src.balance - value;
     if srcBalance < 0 then failwith ("Balance cannot be negative");
     else src.balance := abs(srcBalance);
+
+    s.accounts[accountFrom] := src;
+
+    // Fetch dst account or add empty dst account to ledger
+    var dst: account := record 
+        balance = 0n;
+        allowances = (map end : map(address, amount));
+    end;
+    case s.accounts[destination] of
+    | None -> skip
+    | Some(n) -> dst := n
+    end;
 
     // Update the destination balance
     dst.balance := dst.balance + value;
@@ -82,7 +84,6 @@ function transfer (const accountFrom : address ; const destination : address ; c
         else src.allowances[sender] := abs(allowanceAmount - value);
     } else skip;
 
-    s.accounts[accountFrom] := src;
     s.accounts[destination] := dst;
   }
  end with s
