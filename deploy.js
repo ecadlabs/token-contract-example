@@ -8,27 +8,20 @@ Tezos.setProvider({ rpc: "https://api.tez.ie/rpc/babylonnet" })
 
 Tezos.importKey(email, password, mnemonic.join(" "), secret).then(async () => {
     return Tezos.contract.originate({
-        code: JSON.parse(fs.readFileSync("./build/Audit.json").toString()),
+        code: JSON.parse(fs.readFileSync("./build/Token.json").toString()),
+        // init: { "int": "1" },
         init: {
             prim: "Pair",
             args: [
-                {
-                    prim: "Pair",
-                    args: [
-                        [
-                            {
-                                prim: "Elt", args: [{ string: await Tezos.signer.publicKeyHash() },
-                                {
-                                    prim: 'Pair',
-                                    args: [[], { int: '100' }],
-                                }]
-                            }
-                        ],
+                [
+                    {
+                        prim: "Elt", args: [{ string: await Tezos.signer.publicKeyHash() },
                         {
-                            "string": await Tezos.signer.publicKeyHash()
-                        },
-                    ]
-                },
+                            prim: 'Pair',
+                            args: [[], { int: '100' }],
+                        }]
+                    }
+                ],
                 {
                     "int": "100"
                 }
@@ -39,9 +32,6 @@ Tezos.importKey(email, password, mnemonic.join(" "), secret).then(async () => {
         //     totalSupply: "100",
         //     accounts: {}
         // },
-        // fee: 10000,
-        // gasLimit: 400000,
-        // storageLimit: 2000
     })
 }).then((op) => {
     return op.contract()
