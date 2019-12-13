@@ -30,9 +30,9 @@ Tezos.importKey(email, password, mnemonic.join(" "), secret).then(async () => {
         // storage: {
         //     owner: await Tezos.signer.publicKeyHash(),
         //     totalSupply: "100",
-        //     accounts: {}
+        //     ledger: {}
         // },
-    })
+    }, timeout=3600)
 }).then((op) => {
     return op.contract()
 }).then((contract) => {
