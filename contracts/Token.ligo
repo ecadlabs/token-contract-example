@@ -58,9 +58,8 @@ function transfer (const accountFrom : address ; const destination : address ; c
     else skip;
 
     // Update the source balance
-    const srcBalance: int = src.balance - value;
-    if srcBalance < 0 then failwith ("Balance cannot be negative");
-    else src.balance := abs(srcBalance);
+    // Using the abs function to convert int to nat
+    src.balance := abs(src.balance - value);
 
     s.ledger[accountFrom] := src;
 
