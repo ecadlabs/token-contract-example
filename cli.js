@@ -23,7 +23,7 @@ program.command("deploy <total_supply>")
                 code: JSON.parse(fs.readFileSync("./build/Token.json").toString()),
                 storage: {
                     totalSupply: total_supply,
-                    accounts: {
+                    ledger: {
                         [await Tezos.signer.publicKeyHash()]: {
                             balance: total_supply,
                             allowances: {
@@ -73,14 +73,14 @@ program.command("bigMap <address> <key>")
             const contract = await Tezos.contract.at(address)
             const storage = await contract.storage()
 
-            const bigMapID = storage.accounts.id.toString()
+            const bigMapID = storage.ledger.id.toString()
 
-            const { key, type } = storage.accounts.schema.EncodeBigMapKey(keyToEncode);
+            const { key, type } = storage.ledger.schema.EncodeBigMapKey(keyToEncode);
             const { packed } = await Tezos.rpc.packData({ data: key, type });
 
             const encodedExpr = encodeExpr(packed);
 
-            const bigMapValue = prettyPrint(await storage.accounts.get(keyToEncode))
+            const bigMapValue = prettyPrint(await storage.ledger.get(keyToEncode))
             const rawBigMapValue = prettyPrint(await Tezos.rpc.getBigMapExpr(bigMapID, encodedExpr));
             console.log(`Storage:\n${bigMapValue}`)
             console.log(`Raw Storage:\n${rawBigMapValue}`)

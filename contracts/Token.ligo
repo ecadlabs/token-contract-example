@@ -1,4 +1,4 @@
-// This is an implimentation of the FA1.2.1 specification in PascaLIGO
+// This is an implimentation of the FA1.2 specification in PascaLIGO
 
 type amount is nat;
 
@@ -16,7 +16,7 @@ type action is
 
 type contract_storage is record
   totalSupply: amount;
-  accounts: big_map(address, account);
+  ledger: big_map(address, account);
 end
 
 function isAllowed (const source : address ; const value : amount ; var s : contract_storage) : bool is 
@@ -24,7 +24,7 @@ function isAllowed (const source : address ; const value : amount ; var s : cont
     var allowed: bool := False;
     if sender =/= source then block {
       // Checking if the sender is allowed to spend in name of source
-      const src: account = get_force(source, s.accounts);
+      const src: account = get_force(source, s.ledger);
       const allowanceAmount: amount = get_force(sender, src.allowances);
       allowed := allowanceAmount >= value;
     };
@@ -50,7 +50,7 @@ function transfer (const accountFrom : address ; const destination : address ; c
     end;
 
     // Fetch src account
-    const src: account = get_force(accountFrom, s.accounts);
+    const src: account = get_force(accountFrom, s.ledger);
 
     // Check that the source can spend that much
     if value > src.balance 
@@ -62,14 +62,14 @@ function transfer (const accountFrom : address ; const destination : address ; c
     if srcBalance < 0 then failwith ("Balance cannot be negative");
     else src.balance := abs(srcBalance);
 
-    s.accounts[accountFrom] := src;
+    s.ledger[accountFrom] := src;
 
     // Fetch dst account or add empty dst account to ledger
     var dst: account := record 
         balance = 0n;
         allowances = (map end : map(address, amount));
     end;
-    case s.accounts[destination] of
+    case s.ledger[destination] of
     | None -> skip
     | Some(n) -> dst := n
     end;
@@ -84,7 +84,7 @@ function transfer (const accountFrom : address ; const destination : address ; c
         else src.allowances[sender] := abs(allowanceAmount - value);
     } else skip;
 
-    s.accounts[destination] := dst;
+    s.ledger[destination] := dst;
   }
  end with s
 
@@ -98,9 +98,9 @@ function approve (const spender : address ; const value : amount ; var s : contr
   // If sender is the spender approving is not necessary
   if sender = spender then skip;
   else block {
-    const src: account = get_force(sender, s.accounts);
+    const src: account = get_force(sender, s.ledger);
     src.allowances[spender] := value;
-    s.accounts[sender] := src; // Not sure if this last step is necessary
+    s.ledger[sender] := src; // Not sure if this last step is necessary
   }
  end with s
 
@@ -111,7 +111,7 @@ function approve (const spender : address ; const value : amount ; var s : contr
 //  The state is unchanged
 function getAllowance (const owner : address ; const spender : address ; const contr : contract(amount) ; var s : contract_storage) : list(operation) is
  begin
-  const src: account = get_force(owner, s.accounts);
+  const src: account = get_force(owner, s.ledger);
   const destAllowance: amount = get_force(spender, src.allowances);
  end with list [transaction(destAllowance, 0tz, contr)]
 
@@ -122,7 +122,7 @@ function getAllowance (const owner : address ; const spender : address ; const c
 //  The state is unchanged
 function getBalance (const source : address ; const contr : contract(amount) ; var s : contract_storage) : list(operation) is
  begin
-  const src: account = get_force(source, s.accounts);
+  const src: account = get_force(source, s.ledger);
  end with list [transaction(src.balance, 0tz, contr)]
 
 // View function that forwards the totalSupply to a contract
