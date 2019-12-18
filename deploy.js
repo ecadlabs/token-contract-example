@@ -32,7 +32,7 @@ Tezos.importKey(email, password, mnemonic.join(" "), secret).then(async () => {
         //     totalSupply: "100",
         //     ledger: {}
         // },
-    }, timeout=3600)
+    })
 }).then((op) => {
     return op.contract()
 }).then((contract) => {
