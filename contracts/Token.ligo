@@ -9,12 +9,15 @@ end
 
 type action is
 | Transfer of (address * address * amount)
+| Mint of (amount)
+| Burn of (amount)
 | Approve of (address * amount)
 | GetAllowance of (address * address * contract(amount))
 | GetBalance of (address * contract(amount))
 | GetTotalSupply of (unit * contract(amount))
 
 type contract_storage is record
+  owner: address;
   totalSupply: amount;
   ledger: big_map(address, account);
 end
@@ -87,6 +90,66 @@ function transfer (const accountFrom : address ; const destination : address ; c
   }
  end with s
 
+// Mint tokens into the owner balance
+// Pre conditions:
+//  The sender is the owner of the contract
+// Post conditions:
+//  The minted tokens are add in the balance of the owner
+//  The totalSupply is increased by the amount of minted token
+function mint (const value : amount ; var s : contract_storage) : contract_storage is
+ begin
+  // If the sender is not the owner fail
+  if sender =/= s.owner then failwith("You must be the owner of the contract to mint tokens");
+  else block {
+    var ownerAccount: account := record 
+        balance = 0n;
+        allowances = (map end : map(address, amount));
+    end;
+    case s.ledger[s.owner] of
+    | None -> skip
+    | Some(n) -> ownerAccount := n
+    end;
+
+    // Update the owner balance
+    ownerAccount.balance := ownerAccount.balance + value;
+    s.ledger[s.owner] := ownerAccount;
+    s.totalSupply := abs(s.totalSupply + 1);
+  }
+ end with s
+
+// Burn tokens from the owner balance
+// Pre conditions:
+//  The owner have the required balance to burn
+// Post conditions:
+//  The burned tokens are subtracted from the balance of the owner
+//  The totalSupply is decreased by the amount of burned token 
+function burn (const value : amount ; var s : contract_storage) : contract_storage is
+ begin
+  // If the sender is not the owner fail
+  if sender =/= s.owner then failwith("You must be the owner of the contract to burn tokens");
+  else block {
+    var ownerAccount: account := record 
+        balance = 0n;
+        allowances = (map end : map(address, amount));
+    end;
+    case s.ledger[s.owner] of
+    | None -> skip
+    | Some(n) -> ownerAccount := n
+    end;
+
+    // Check that the owner can spend that much
+    if value > ownerAccount.balance 
+    then failwith ("Owner balance is too low");
+    else skip;
+
+    // Update the owner balance
+    // Using the abs function to convert int to nat
+    ownerAccount.balance := abs(ownerAccount.balance - value);
+    s.ledger[s.owner] := ownerAccount;
+    s.totalSupply := abs(s.totalSupply - 1);
+  }
+ end with s
+
 // Approve an amount to be spent by another address in the name of the sender
 // Pre conditions:
 //  The spender account is not the sender account
@@ -144,4 +207,6 @@ function main (const p : action ; const s : contract_storage) :
   | GetAllowance(n) -> (getAllowance(n.0, n.1, n.2, s), s)
   | GetBalance(n) -> (getBalance(n.0, n.1, s), s)
   | GetTotalSupply(n) -> (getTotalSupply(n.1, s), s)
+  | Mint(n) -> ((nil : list(operation)), mint(n, s))
+  | Burn(n) -> ((nil : list(operation)), burn(n, s))
  end

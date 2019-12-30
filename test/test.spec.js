@@ -235,6 +235,48 @@ const testAllowanceFromManager = async (address) => {
     assert(initialStorage.accounts[pkh].allowances[manager.address].toString() === finalStorage.accounts[pkh].allowances[manager.address].plus(1).toString())
 }
 
+const testMintFromOwner = async (address) => {
+    const { Tezos1 } = await getAccounts()
+    const pkh = await Tezos1.signer.publicKeyHash();
+    const initialStorage = await getFullStorage(address, [pkh])
+    const contract3 = await Tezos1.contract.at(address)
+    const operation = await contract3.methods.mint("1").send()
+
+    await operation.confirmation();
+
+    const finalStorage = await getFullStorage(address, [pkh])
+    assert(initialStorage.accounts[pkh].balance.toString() === finalStorage.accounts[pkh].balance.minus(1).toString())
+    assert(initialStorage.totalSupply.toString() === finalStorage.totalSupply.minus(1).toString())
+}
+
+const testBurnFromOwner = async (address, amount = "1") => {
+    const { Tezos1 } = await getAccounts()
+    const pkh = await Tezos1.signer.publicKeyHash();
+    const initialStorage = await getFullStorage(address, [pkh])
+    const contract3 = await Tezos1.contract.at(address)
+    const operation = await contract3.methods.burn(amount).send()
+
+    await operation.confirmation();
+
+    const finalStorage = await getFullStorage(address, [pkh])
+    assert(initialStorage.accounts[pkh].balance.toString() === finalStorage.accounts[pkh].balance.plus(amount).toString())
+    assert(initialStorage.totalSupply.toString() === finalStorage.totalSupply.plus(amount).toString())
+}
+
+const testMintFromNotOwner = async (address) => {
+    const { Tezos2 } = await getAccounts()
+    const pkh = await Tezos2.signer.publicKeyHash();
+    const initialStorage = await getFullStorage(address, [pkh])
+    const contract3 = await Tezos2.contract.at(address)
+    const operation = await contract3.methods.mint("1").send()
+
+    await operation.confirmation();
+
+    const finalStorage = await getFullStorage(address, [pkh])
+    assert(initialStorage.accounts[pkh].balance.toString() === finalStorage.accounts[pkh].balance.minus(1).toString())
+    assert(initialStorage.totalSupply.toString() === finalStorage.totalSupply.minus(1).toString())
+}
+
 const expectThrow = async (fn) => {
     let throwed = false;
     try {
@@ -274,7 +316,11 @@ const test = async () => {
         () => testAllowanceFromImplicit(address),
         () => expectThrow(() => testAllowanceToImplicit(address, "-5")),
         () => expectThrow(() => testTransferToImplicit(address, "-5")),
-        () => expectThrow(() => testTransferToManager(address, "-2"))
+        () => expectThrow(() => testTransferToManager(address, "-2")),
+        () => testMintFromOwner(address),
+        () => expectThrow(() => testMintFromNotOwner(address)),
+        () => expectThrow(() => testBurnFromOwner(address, "200")),
+        () => testBurnFromOwner(address, 1)
     ];
 
     for (let test of tests) {
