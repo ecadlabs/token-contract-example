@@ -19,12 +19,12 @@ type contract_storage is record
   ledger: big_map(address, account);
 end
 
-function isAllowed (const source : address ; const value : amount ; var s : contract_storage) : bool is 
+function isAllowed (const accountFrom : address ; const value : amount ; var s : contract_storage) : bool is 
   begin
     var allowed: bool := False;
-    if sender =/= source then block {
+    if sender =/= accountFrom then block {
       // Checking if the sender is allowed to spend in name of source
-      const src: account = get_force(source, s.ledger);
+      const src: account = get_force(accountFrom, s.ledger);
       const allowanceAmount: amount = get_force(sender, src.allowances);
       allowed := allowanceAmount >= value;
     };
@@ -77,12 +77,12 @@ function transfer (const accountFrom : address ; const destination : address ; c
     dst.balance := dst.balance + value;
 
     // Decrease the allowance amount if necessary
-    if accountFrom =/= sender then block {
-        const allowanceAmount: amount = get_force(sender, src.allowances);
-        if allowanceAmount - value < 0 then failwith ("Allowance amount cannot be negative");
-        else src.allowances[sender] := abs(allowanceAmount - value);
-    } else skip;
+    case src.allowances[sender] of
+    | None -> skip
+    | Some(dstAllowance) -> src.allowances[sender] := abs(dstAllowance - value)  // ensure non negative
+    end;
 
+    s.ledger[accountFrom] := src;
     s.ledger[destination] := dst;
   }
  end with s
@@ -119,9 +119,9 @@ function getAllowance (const owner : address ; const spender : address ; const c
 //  None
 // Post conditions:
 //  The state is unchanged
-function getBalance (const source : address ; const contr : contract(amount) ; var s : contract_storage) : list(operation) is
+function getBalance (const accountFrom : address ; const contr : contract(amount) ; var s : contract_storage) : list(operation) is
  begin
-  const src: account = get_force(source, s.ledger);
+  const src: account = get_force(accountFrom, s.ledger);
  end with list [transaction(src.balance, 0tz, contr)]
 
 // View function that forwards the totalSupply to a contract
