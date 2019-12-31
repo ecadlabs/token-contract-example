@@ -15,12 +15,31 @@ type action is
 | GetAllowance of (address * address * contract(amount))
 | GetBalance of (address * contract(amount))
 | GetTotalSupply of (unit * contract(amount))
+| SetPause of (bool)
+| SetOwner of (address)
 
 type contract_storage is record
   owner: address;
   totalSupply: amount;
   ledger: big_map(address, account);
+  paused: bool;
 end
+
+function setPause (const pause: bool; var s : contract_storage)  : contract_storage is
+ begin
+  if sender =/= s.owner then failwith("You must be the owner of the contract to pause the contract");
+  else block {
+    s.paused := pause;
+  }
+ end with s
+
+function setOwner (const owner: address; var s: contract_storage) : contract_storage is
+ begin
+  if sender =/= s.owner then failwith("You must be the owner of the contract to transfer ownership");
+  else block {
+    s.owner := owner;
+  }
+ end with s
 
 function isAllowed (const accountFrom : address ; const value : amount ; var s : contract_storage) : bool is 
   begin
@@ -36,6 +55,7 @@ function isAllowed (const accountFrom : address ; const value : amount ; var s :
 
 // Transfer a specific amount of tokens from accountFrom address to a destination address
 // Preconditions:
+//  The contract must not be paused
 //  The sender address is the account owner or is allowed to spend x in the name of accountFrom
 //  The accountFrom account has a balance higher than the amount
 // Postconditions:
@@ -43,6 +63,8 @@ function isAllowed (const accountFrom : address ; const value : amount ; var s :
 //  The balance of destination is increased by the amount
 function transfer (const accountFrom : address ; const destination : address ; const value : amount ; var s : contract_storage) : contract_storage is
  begin  
+  if s.paused then failwith("Contract paused") else skip;
+
   // If accountFrom = destination transfer is not necessary
   if accountFrom = destination then skip;
   else block {
@@ -92,12 +114,15 @@ function transfer (const accountFrom : address ; const destination : address ; c
 
 // Mint tokens into the owner balance
 // Preconditions:
+//  The contract must not be paused
 //  The sender is the owner of the contract
 // Postconditions:
 //  The minted tokens are added in the balance of the owner
 //  The totalSupply is increased by the amount of minted token
 function mint (const value : amount ; var s : contract_storage) : contract_storage is
  begin
+  if s.paused then failwith("Contract paused") else skip;
+
   // If the sender is not the owner fail
   if sender =/= s.owner then failwith("You must be the owner of the contract to mint tokens");
   else block {
@@ -119,12 +144,15 @@ function mint (const value : amount ; var s : contract_storage) : contract_stora
 
 // Burn tokens from the owner balance
 // Preconditions:
+//  The contract must not be paused
 //  The owner have the required balance to burn
 // Postconditions:
 //  The burned tokens are subtracted from the balance of the owner
 //  The totalSupply is decreased by the amount of burned token 
 function burn (const value : amount ; var s : contract_storage) : contract_storage is
  begin
+  if s.paused then failwith("Contract paused") else skip;
+
   // If the sender is not the owner fail
   if sender =/= s.owner then failwith("You must be the owner of the contract to burn tokens");
   else block {
@@ -157,6 +185,8 @@ function burn (const value : amount ; var s : contract_storage) : contract_stora
 //  The allowance of spender in the name of sender is value
 function approve (const spender : address ; const value : amount ; var s : contract_storage) : contract_storage is
  begin
+  if s.paused then failwith("Contract paused") else skip;
+
   // If sender is the spender approving is not necessary
   if sender = spender then skip;
   else block {
@@ -209,4 +239,6 @@ function main (const p : action ; const s : contract_storage) :
   | GetTotalSupply(n) -> (getTotalSupply(n.1, s), s)
   | Mint(n) -> ((nil : list(operation)), mint(n, s))
   | Burn(n) -> ((nil : list(operation)), burn(n, s))
+  | SetPause(n) -> ((nil : list(operation)), setPause(n, s))
+  | SetOwner(n) -> ((nil : list(operation)), setOwner(n, s))
  end
