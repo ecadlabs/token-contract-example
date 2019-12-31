@@ -14,8 +14,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@taquito/taquito": "next",
-    "@taquito/utils": "^5.2.0-beta.0",
+    "@taquito/taquito": "^5.3.1-beta.1",
+    "@taquito/utils": "^5.3.1-beta.1",
     "bignumber.js": "^9.0.0",
     "commander": "^4.0.0"
   }

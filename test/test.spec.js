@@ -86,7 +86,6 @@ const getFullStorage = async (address, keys) => {
         try {
             entry = await storage.ledger.get(current)
         } catch (ex) {
-            console.error(ex)
             // Do nothing
         }
 
@@ -277,6 +276,42 @@ const testMintFromNotOwner = async (address) => {
     assert(initialStorage.totalSupply.toString() === finalStorage.totalSupply.minus(1).toString())
 }
 
+const testSetPaused = async (address) => {
+    const { Tezos1 } = await getAccounts()
+    const contract3 = await Tezos1.contract.at(address)
+    const operation = await contract3.methods.setPause(true).send()
+    await operation.confirmation();
+    const finalStorage = await getFullStorage(address, [])
+    assert(finalStorage.paused)
+}
+
+const testTransferOwnershipToTezos2 = async (address) => {
+    const { Tezos1, Tezos2 } = await getAccounts()
+    const contract3 = await Tezos1.contract.at(address)
+    const operation = await contract3.methods.setOwner(await Tezos2.signer.publicKeyHash()).send()
+    await operation.confirmation();
+    const finalStorage = await getFullStorage(address, [])
+    assert(finalStorage.owner === await Tezos2.signer.publicKeyHash())
+}
+
+const testTransferOwnershipToTezos1 = async (address) => {
+    const { Tezos1, Tezos2 } = await getAccounts()
+    const contract3 = await Tezos2.contract.at(address)
+    const operation = await contract3.methods.setOwner(await Tezos1.signer.publicKeyHash()).send()
+    await operation.confirmation();
+    const finalStorage = await getFullStorage(address, [])
+    assert(finalStorage.owner === await Tezos1.signer.publicKeyHash())
+}
+
+const testSetUnpaused = async (address) => {
+    const { Tezos1 } = await getAccounts()
+    const contract3 = await Tezos1.contract.at(address)
+    const operation = await contract3.methods.setPause(false).send()
+    await operation.confirmation();
+    const finalStorage = await getFullStorage(address, [])
+    assert(!finalStorage.paused)
+}
+
 const expectThrow = async (fn) => {
     let throwed = false;
     try {
@@ -320,7 +355,16 @@ const test = async () => {
         () => testMintFromOwner(address),
         () => expectThrow(() => testMintFromNotOwner(address)),
         () => expectThrow(() => testBurnFromOwner(address, "200")),
-        () => testBurnFromOwner(address, 1)
+        () => testBurnFromOwner(address, 1),
+        () => testSetPaused(address),
+        () => expectThrow(() => testTransferToManager(address)),
+        () => testSetUnpaused(address),
+        () => testTransferToManager(address),
+        () => testTransferOwnershipToTezos2(address),
+        () => expectThrow(() => testTransferOwnershipToTezos2(address)),
+        () => expectThrow(() => testSetPaused(address)),
+        () => testTransferOwnershipToTezos1(address),
+        () => testMintFromOwner(address),
     ];
 
     for (let test of tests) {
