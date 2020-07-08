@@ -113,7 +113,7 @@ function mint (const value : amount ; var s : contract_storage) : contract_stora
     // Update the owner balance
     ownerAccount.balance := ownerAccount.balance + value;
     s.ledger[s.owner] := ownerAccount;
-    s.totalSupply := abs(s.totalSupply + 1);
+    s.totalSupply := abs(s.totalSupply + value);
   }
  end with s
 
@@ -146,7 +146,7 @@ function burn (const value : amount ; var s : contract_storage) : contract_stora
     // Using the abs function to convert int to nat
     ownerAccount.balance := abs(ownerAccount.balance - value);
     s.ledger[s.owner] := ownerAccount;
-    s.totalSupply := abs(s.totalSupply - 1);
+    s.totalSupply := abs(s.totalSupply - value);
   }
  end with s
 
